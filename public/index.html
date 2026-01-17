@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Almacén — Productos</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial; }
+    body { margin: 0; background: #0b0f17; color: #e8eefc; }
+    header { padding: 20px 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
+    h1 { margin: 0; font-size: 20px; }
+    main { padding: 16px; max-width: 1100px; margin: 0 auto; }
+    .card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 14px; }
+    .grid { display: grid; gap: 12px; }
+    .filters { grid-template-columns: repeat(12, 1fr); align-items: end; }
+    .filters > div { grid-column: span 3; }
+    .filters > div.wide { grid-column: span 6; }
+    label { display: block; font-size: 12px; opacity: .85; margin-bottom: 6px; }
+    input, select { width: 100%; padding: 10px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.25); color: #e8eefc; outline: none; }
+    input::placeholder { color: rgba(232,238,252,.55); }
+    button { padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06); color: #e8eefc; cursor: pointer; }
+    button:hover { background: rgba(255,255,255,.10); }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .muted { opacity: .75; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 14px; }
+    thead th { text-align: left; font-size: 12px; opacity: .85; padding: 12px; border-bottom: 1px solid rgba(255,255,255,.08); }
+    tbody td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    tbody tr:hover { background: rgba(255,255,255,.04); }
+    .pill { display: inline-block; padding: 3px 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; font-size: 12px; opacity: .9;}
+    .right { text-align: right; }
+    .ok { opacity: 0.9; }
+    .err { opacity: 0.95; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    @media (max-width: 900px) {
+      .filters > div { grid-column: span 6; }
+      .filters > div.wide { grid-column: span 12; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="max-width:1100px;margin:0 auto;">
+      <h1>🧰 Almacén — Productos</h1>
+      <div class="muted">Web que consume <code>/productos</code> · Alta · Salidas · Alertas por stock mínimo</div>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="card grid filters" aria-label="Acciones y filtros">
+      <div class="wide">
+        <label for="q">Buscar por nombre</label>
+        <input id="q" placeholder="Ej: producto 12" />
+      </div>
+
+      <div>
+        <label for="minExist">Existencias mín</label>
+        <input id="minExist" type="number" min="0" placeholder="0" />
+      </div>
+
+      <div>
+        <label for="orden">Orden</label>
+        <select id="orden">
+          <option value="ref_asc">Referencia (asc)</option>
+          <option value="ref_desc">Referencia (desc)</option>
+          <option value="nombre_asc">Nombre (A→Z)</option>
+          <option value="nombre_desc">Nombre (Z→A)</option>
+          <option value="exist_asc">Existencias (menos→más)</option>
+          <option value="exist_desc">Existencias (más→menos)</option>
+        </select>
+      </div>
+
+      <div class="row" style="grid-column: span 12;">
+        <button id="btnRecargar">Recargar</button>
+        <button id="btnLimpiar" title="Limpia filtros">Limpiar filtros</button>
+        <button id="btnVaciar" title="Borra todos los productos">Vaciar BD</button>
+        <span class="muted" id="estado"></span>
+      </div>
+
+      <!-- Alta -->
+      <div class="wide" style="grid-column: span 12; margin-top: 8px; border-top: 1px solid rgba(255,255,255,.08); padding-top: 12px;">
+        <div class="row" style="gap:12px; flex: 1;">
+          <div style="width: 220px;">
+            <label for="nuevaRef">Referencia</label>
+            <input id="nuevaRef" type="number" min="1" placeholder="Ej: 412219" />
+          </div>
+          <div style="flex: 1; min-width: 220px;">
+            <label for="nuevoNombre">Nuevo producto (nombre)</label>
+            <input id="nuevoNombre" placeholder="Ej: Tornillos M4" />
+          </div>
+          <div style="width: 220px;">
+            <label for="nuevasExist">Existencias</label>
+            <input id="nuevasExist" type="number" min="0" placeholder="0" />
+          </div>
+          <div style="align-self:end;">
+            <button id="btnCrear">Añadir</button>
+          </div>
+        </div>
+        <div class="muted" id="msgCrear" style="margin-top:8px;"></div>
+      </div>
+
+      <!-- Salida -->
+      <div class="wide" style="grid-column: span 12; margin-top: 10px; border-top: 1px solid rgba(255,255,255,.08); padding-top: 12px;">
+        <div class="row" style="gap:12px; flex: 1;">
+          <div style="width: 220px;">
+            <label for="salidaRef">Salida (Referencia)</label>
+            <input id="salidaRef" type="number" min="1" placeholder="Ej: 412219" />
+          </div>
+          <div style="width: 220px;">
+            <label for="salidaCant">Cantidad a restar</label>
+            <input id="salidaCant" type="number" min="1" placeholder="Ej: 2" />
+          </div>
+          <div style="align-self:end;">
+            <button id="btnSalida">Registrar salida</button>
+          </div>
+        </div>
+        <div class="muted" id="msgSalida" style="margin-top:8px;"></div>
+      </div>
+    </section>
+
+    <section class="card" aria-label="Tabla">
+      <div class="row" style="justify-content: space-between; align-items: baseline;">
+        <div><span class="pill" id="contador">0</span> <span class="muted">productos</span></div>
+        <div class="muted">Tip: escribe para filtrar en vivo</div>
+      </div>
+
+      <div style="margin-top:12px; overflow:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Referencia</th>
+              <th>Nombre</th>
+              <th class="right">Existencias</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="3" class="muted">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const state = { data: [], filtered: [] };
+
+  // ✅ Enviar token como Bearer (más robusto que depender solo de cookies)
+  function authHeaders(extra = {}) {
+    const token = localStorage.getItem("token");
+    return token ? { ...extra, Authorization: `Bearer ${token}` } : extra;
+  }
+
+  // Si no hay token, vuelve a login
+  if (!localStorage.getItem("token")) {
+    window.location.href = "/login";
+  }
+
+  function safeHtml(s) {
+    return String(s ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+  }
+
+  function applyFilters() {
+    const q = ($("q").value || "").trim().toLowerCase();
+    const minE = $("minExist").value === "" ? null : Number($("minExist").value);
+
+    let rows = state.data.slice();
+    if (q) rows = rows.filter(r => (r.nombre || "").toLowerCase().includes(q));
+    if (minE !== null) rows = rows.filter(r => Number(r.existencias) >= minE);
+
+    const orden = $("orden").value;
+    const cmpStr = (a,b) => a.localeCompare(b, "es", { sensitivity: "base" });
+
+    rows.sort((a,b) => {
+      switch (orden) {
+        case "ref_desc": return (b.referencia - a.referencia);
+        case "nombre_asc": return cmpStr(a.nombre||"", b.nombre||"");
+        case "nombre_desc": return cmpStr(b.nombre||"", a.nombre||"");
+        case "exist_asc": return (a.existencias - b.existencias);
+        case "exist_desc": return (b.existencias - a.existencias);
+        default: return (a.referencia - b.referencia);
+      }
+    });
+
+    state.filtered = rows;
+    render();
+  }
+
+  function render() {
+    $("contador").textContent = state.filtered.length;
+    const tbody = $("tbody");
+    if (!state.filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="3" class="muted">Sin resultados con los filtros actuales.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = state.filtered.map(r => `
+      <tr>
+        <td>${r.referencia}</td>
+        <td>${safeHtml(r.nombre)}</td>
+        <td class="right">${r.existencias}</td>
+      </tr>
+    `).join("");
+  }
+
+  async function load() {
+    $("estado").textContent = "Cargando /productos…";
+    try {
+      const res = await fetch("/productos", { headers: authHeaders({ "Accept": "application/json" }) });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      state.data = Array.isArray(data) ? data : [];
+      $("estado").textContent = `OK · ${state.data.length} productos cargados`;
+      applyFilters();
+    } catch (e) {
+      console.error(e);
+      $("estado").textContent = "Error cargando /productos (mira consola)";
+      $("tbody").innerHTML = `<tr><td colspan="3" class="muted">Error cargando datos.</td></tr>`;
+    }
+  }
+
+  async function crearProducto() {
+    const refStr = $("nuevaRef").value;
+    const referencia = refStr === "" ? null : Number(refStr);
+    const nombre = ($("nuevoNombre").value || "").trim();
+    const existenciasStr = $("nuevasExist").value;
+    const existencias = existenciasStr === "" ? null : Number(existenciasStr);
+
+    const msg = $("msgCrear");
+    msg.textContent = "";
+    msg.className = "muted";
+
+    if (!referencia || !Number.isInteger(referencia) || referencia <= 0) {
+      msg.textContent = "Introduce referencia válida (entero > 0).";
+      msg.classList.add("err");
+      return;
+    }
+
+    if (!nombre || existencias === null || Number.isNaN(existencias) || existencias < 0) {
+      msg.textContent = "Introduce nombre y existencias (número >= 0).";
+      msg.classList.add("err");
+      return;
+    }
+
+    try {
+      const res = await fetch("/productos", {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json", "Accept": "application/json" }),
+        body: JSON.stringify({ referencia, nombre, existencias })
+      });
+
+      const body = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        msg.textContent = body.error || ("Error HTTP " + res.status);
+        msg.classList.add("err");
+        return;
+      }
+
+      msg.textContent = `✅ Añadido: ${body.nombre} (ref ${body.referencia})`;
+      msg.classList.add("ok");
+
+      $("nuevaRef").value = "";
+      $("nuevoNombre").value = "";
+      $("nuevasExist").value = "";
+
+      await load();
+    } catch (e) {
+      console.error(e);
+      msg.textContent = "Error creando el producto (mira consola)";
+      msg.classList.add("err");
+    }
+  }
+
+  async function registrarSalida() {
+    const refStr = $("salidaRef").value;
+    const cantStr = $("salidaCant").value;
+
+    const referencia = refStr === "" ? null : Number(refStr);
+    const cantidad = cantStr === "" ? null : Number(cantStr);
+
+    const msg = $("msgSalida");
+    msg.textContent = "";
+    msg.className = "muted";
+
+    if (!referencia || !Number.isInteger(referencia) || referencia <= 0 || !cantidad || Number.isNaN(cantidad) || cantidad <= 0) {
+      msg.textContent = "Introduce referencia válida y cantidad (número > 0).";
+      msg.classList.add("err");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/productos/${referencia}/salida`, {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json", "Accept": "application/json" }),
+        body: JSON.stringify({ cantidad })
+      });
+
+      const body = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        msg.textContent = body.error || ("Error HTTP " + res.status);
+        msg.classList.add("err");
+        return;
+      }
+
+      msg.textContent = `✅ Salida registrada. Quedan ${body.producto.existencias} en "${body.producto.nombre}"`;
+      msg.classList.add("ok");
+
+      $("salidaRef").value = "";
+      $("salidaCant").value = "";
+
+      await load();
+    } catch (e) {
+      console.error(e);
+      msg.textContent = "Error registrando salida (mira consola)";
+      msg.classList.add("err");
+    }
+  }
+
+  async function vaciarBD() {
+    const txt = prompt('⚠️ Esto borrará TODOS los productos.\nEscribe VACIAR para confirmar:');
+    if (txt !== "VACIAR") return;
+
+    try {
+      const res = await fetch("/admin/vaciar-bd", {
+        method: "POST",
+        headers: authHeaders({ "Accept": "application/json" })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || ("HTTP " + res.status));
+      alert(body.mensaje || "BD vaciada");
+      await load();
+    } catch (e) {
+      console.error(e);
+      alert("Error al vaciar la BD (mira consola)");
+    }
+  }
+
+  // Eventos
+  ["q","minExist","orden"].forEach(id => {
+    $(id).addEventListener("input", applyFilters);
+    $(id).addEventListener("change", applyFilters);
+  });
+
+  $("btnRecargar").addEventListener("click", load);
+
+  $("btnLimpiar").addEventListener("click", () => {
+    $("q").value = "";
+    $("minExist").value = "";
+    $("orden").value = "ref_asc";
+    applyFilters();
+  });
+
+  $("btnVaciar").addEventListener("click", vaciarBD);
+
+  $("btnCrear").addEventListener("click", crearProducto);
+  $("nuevoNombre").addEventListener("keydown", (e) => { if (e.key === "Enter") crearProducto(); });
+  $("nuevasExist").addEventListener("keydown", (e) => { if (e.key === "Enter") crearProducto(); });
+
+  $("btnSalida").addEventListener("click", registrarSalida);
+  $("salidaRef").addEventListener("keydown", (e) => { if (e.key === "Enter") registrarSalida(); });
+  $("salidaCant").addEventListener("keydown", (e) => { if (e.key === "Enter") registrarSalida(); });
+
+  load();
+</script>
+</body>
+</html>
