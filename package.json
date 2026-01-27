@@ -1,0 +1,11 @@
+{
+  "name": "almacen2-root",
+  "private": true,
+  "scripts": {
+    "postinstall": "npm --prefix backend ci --no-audit --no-fund",
+    "start": "node backend/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
