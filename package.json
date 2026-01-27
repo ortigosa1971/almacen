@@ -1,9 +1,10 @@
 {
-  "name": "almacen2-root",
+  "name": "almacen2",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
-    "postinstall": "npm --prefix backend ci --no-audit --no-fund",
-    "start": "node backend/index.js"
+    "install": "npm --prefix backend ci",
+    "start": "npm --prefix backend start"
   },
   "engines": {
     "node": ">=18"
